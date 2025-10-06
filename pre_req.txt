@@ -1,0 +1,28 @@
+------>>>>> Windows Patching ------->>>>>
+
+Pre-requisites (ask the customer)
+
+"WinRM" enabled on target Windows servers (recommended: HTTPS/5986).
+
+poweshell --->>> "Enable-PSRemoting -Force"
+
+Firewall rules allowing WinRM: TCP 5985 (HTTP) and/or 5986 (HTTPS).
+
+A machine account with Local Administrator privileges (or domain account) for Ansible to use. 
+
+Execution Environment in AAP must include "ansible.windows" collection (common EE images include it). If not, ensure the EE has:
+
+install on AAP server -->> "ansible-galaxy collection install ansible.windows community.windows"
+
+If using WSUS, ensure servers are pointed to the WSUS server (via GPO or local config). If not, Microsoft Update (internet) will be used.
+
+set host variables in AAP UI (Inventory → Hosts → Variables):
+
+ansible_connection: winrm
+ansible_winrm_transport: basic         # or 'ntlm' / 'kerberos' depending on env
+ansible_user: DOMAIN\ansible_user      # or local: Administrator
+ansible_password: <stored-in-credential>
+ansible_port: 5986
+ansible_winrm_server_cert_validation: ignore   # for POC; use proper certs in prod
+
+In AAP, prefer storing username/password in a Machine credential and selecting that credential in the Job Template. Do not hardcode passwords in inventory.
