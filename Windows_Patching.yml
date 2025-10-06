@@ -1,0 +1,59 @@
+---
+- name: Windows Patching (WSUS or Microsoft Update)
+  hosts: windows
+  gather_facts: yes
+  vars:
+    update_categories:
+      - SecurityUpdates
+      - CriticalUpdates
+    reboot_timeout: 900   # seconds - adjust as needed
+
+  tasks:
+
+    - name: Check if WSUS is configured (registry)
+      ansible.windows.win_reg_stat:
+        path: HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate
+      register: wsus_reg
+      changed_when: false
+
+    - name: Show chosen update source
+      ansible.builtin.debug:
+        msg: >-
+          {% if wsus_reg.exists %}
+            WSUS detected: updates will be applied from configured WSUS server.
+          {% else %}
+            WSUS not detected: updates will be applied from Microsoft Update (internet).
+          {% endif %}
+
+    - name: Install updates (categories: Security & Critical)
+      ansible.windows.win_updates:
+        category_names: "{{ update_categories }}"
+        reboot: yes
+      register: update_result
+      retries: 1
+      delay: 10
+
+    - name: Build summary facts
+      set_fact:
+        patch_summary:
+          host: "{{ inventory_hostname }}"
+          updates_count: "{{ update_result.updates | length if update_result.updates is defined else 0 }}"
+          reboot_required: "{{ update_result.reboot_required | default(false) }}"
+          updates: "{{ update_result.updates | default([]) }}"
+
+    - name: Print patch summary (shows in AAP job output)
+      ansible.builtin.debug:
+        var: patch_summary
+
+    - name: Save patch summary to local host file (optional)
+      # This writes a JSON summary file on the managed Windows host under C:\Temp\.
+      ansible.windows.win_copy:
+        dest: "C:\\Temp\\patch_summary_{{ inventory_hostname }}.json"
+        content: "{{ patch_summary | to_nice_json }}"
+      when: patch_summary is defined
+
+    - name: Reboot if required (ensure system is back)
+      ansible.windows.win_reboot:
+        reboot_timeout: "{{ reboot_timeout }}"
+        msg: "Rebooting after Windows update installation via Ansible"
+      when: patch_summary.reboot_required | bool
