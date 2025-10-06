@@ -1,0 +1,57 @@
+---
+- name: Execute PowerShell script on Windows nodes
+  hosts: windows_servers
+  gather_facts: yes
+  vars:
+    script_src: "myscript.ps1"             # script in Project root
+    script_dest: "C:\\Temp\\myscript.ps1" # target path on Windows host
+    cleanup_after: false                   # remove script after execution
+    summary_file: "C:\\Temp\\script_summary_{{ inventory_hostname }}.txt"
+
+  tasks:
+
+    - name: Ensure C:\Temp exists
+      ansible.windows.win_file:
+        path: C:\Temp
+        state: directory
+
+    - name: Copy PowerShell script to remote host
+      ansible.windows.win_copy:
+        src: "{{ script_src }}"
+        dest: "{{ script_dest }}"
+
+    - name: Execute the PowerShell script
+      ansible.windows.win_shell: "powershell.exe -ExecutionPolicy Bypass -File {{ script_dest }}"
+      register: script_output
+      args:
+        timeout: 1200
+
+    - name: Build summary facts
+      set_fact:
+        script_summary:
+          host: "{{ inventory_hostname }}"
+          return_code: "{{ script_output.rc }}"
+          stdout: "{{ script_output.stdout }}"
+          stderr: "{{ script_output.stderr }}"
+
+    - name: Print summary in job output
+      ansible.builtin.debug:
+        var: script_summary
+
+    - name: Save execution summary to remote file
+      ansible.windows.win_copy:
+        dest: "{{ summary_file }}"
+        content: |
+          Host: {{ inventory_hostname }}
+          Date: {{ ansible_date_time.iso8601 }}
+          Return Code: {{ script_output.rc }}
+          STDOUT:
+          {{ script_output.stdout }}
+          STDERR:
+          {{ script_output.stderr }}
+
+    - name: Cleanup script on remote host
+      ansible.windows.win_file:
+        path: "{{ script_dest }}"
+        state: absent
+      when: cleanup_after | bool
