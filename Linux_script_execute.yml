@@ -1,0 +1,63 @@
+---
+- name: Copy and execute script on Linux nodes (RHEL/CentOS/Ubuntu)
+  hosts: linux_servers
+  become: yes
+  gather_facts: yes
+  vars:
+    # Path in project on AAP controller (relative) or absolute on controller node.
+    script_src: "myscript.sh"
+    # Destination path on managed node
+    script_dest: "/tmp/myscript.sh"
+    # Set to true if you want to remove script after execution
+    cleanup_after: false
+    # Where to store per-host remote summary
+    remote_summary_file: "/tmp/patch_poc_summary_{{ inventory_hostname }}.txt"
+
+  tasks:
+
+    - name: Ensure /tmp exists (defensive)
+      ansible.builtin.file:
+        path: /tmp
+        state: directory
+        mode: '1777'
+
+    - name: Copy script to remote host
+      ansible.builtin.copy:
+        src: "{{ script_src }}"
+        dest: "{{ script_dest }}"
+        mode: '0755'
+      register: copy_result
+
+    - name: Execute the script
+      ansible.builtin.shell: "{{ script_dest }}"
+      register: script_exec
+      changed_when: "'CHANGED' in script_exec.stdout or script_exec.rc != 0"
+      # timeout can be increased if script may take longer
+      args:
+        timeout: 1200
+
+    - name: Save execution output to a remote summary file
+      ansible.builtin.copy:
+        dest: "{{ remote_summary_file }}"
+        content: |
+          Host: {{ inventory_hostname }}
+          Date: {{ ansible_date_time.iso8601 }}
+          Return Code: {{ script_exec.rc }}
+          STDOUT:
+          {{ script_exec.stdout | default('') }}
+          STDERR:
+          {{ script_exec.stderr | default('') }}
+      when: script_exec is defined
+
+    - name: Fetch remote summary to controller (optional, stores in job stdout if job artifacts configured)
+      ansible.builtin.fetch:
+        src: "{{ remote_summary_file }}"
+        dest: "./reports/{{ inventory_hostname }}/"
+        flat: yes
+      when: script_exec is defined
+
+    - name: Optionally cleanup script on remote host
+      ansible.builtin.file:
+        path: "{{ script_dest }}"
+        state: absent
+      when: cleanup_after | bool
