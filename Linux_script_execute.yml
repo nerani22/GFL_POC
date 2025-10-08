@@ -33,8 +33,8 @@
       register: script_exec
       changed_when: "'CHANGED' in script_exec.stdout or script_exec.rc != 0"
       # timeout can be increased if script may take longer
-      args:
-        timeout: 1200
+      #args:
+        #timeout: 1200
 
     - name: Save execution output to a remote summary file
       ansible.builtin.copy:
