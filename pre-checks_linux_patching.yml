@@ -9,10 +9,6 @@
     
 
   tasks:
-
-    ##########################################################################
-    # Pre-Check Section
-    ##########################################################################
     - name: ===== PRE-CHECKS =====
       debug:
         msg: "Starting Pre-Patching Checks on {{ inventory_hostname }}"
