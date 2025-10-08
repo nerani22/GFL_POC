@@ -1,6 +1,6 @@
 ---
-- name: Perform Pre and Post Patching Checks
-  hosts: all
+- name: Perform Pre Patching Checks
+  hosts: linux_servers
   become: true
   gather_facts: true
 
