@@ -23,8 +23,8 @@
     - name: Execute the PowerShell script
       ansible.windows.win_shell: "powershell.exe -ExecutionPolicy Bypass -File {{ script_dest }}"
       register: script_output
-      args:
-        timeout: 1200
+      #args:
+        #timeout: 1200
 
     - name: Build summary facts
       set_fact:
