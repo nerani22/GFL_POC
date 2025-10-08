@@ -1,0 +1,39 @@
+---
+- name: Perform Post Patching Checks
+  hosts: linux_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    postcheck_log: /tmp/post_patching_report_{{ inventory_hostname }}.log
+
+  tasks:
+
+    - name: ===== POST-CHECKS =====
+      debug:
+        msg: "Starting Post-Patching Checks on {{ inventory_hostname }}"
+
+    - name: Collect updated kernel version
+      command: uname -r
+      register: post_kernel_out
+
+    - name: Collect running services after reboot
+      command: systemctl list-units --type=service --state=running
+      register: post_services_out
+
+    - name: Save post-check report
+      copy:
+        dest: "{{ postcheck_log }}"
+        content: |
+          ===== POST-PATCH REPORT =====
+          Hostname: {{ inventory_hostname }}
+          Date: {{ ansible_date_time.date }}
+          Time: {{ ansible_date_time.time }}
+          Updated Kernel Version:
+          {{ post_kernel_out.stdout }}
+          Running Services (After Reboot):
+          {{ post_services_out.stdout }}
+
+    - name: Display completion message
+      debug:
+        msg: "Post patching checks completed for {{ inventory_hostname }}"
