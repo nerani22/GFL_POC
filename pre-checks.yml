@@ -1,0 +1,61 @@
+---
+- name: Perform Pre and Post Patching Checks
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    precheck_log: /tmp/pre_patching_report_{{ inventory_hostname }}.log
+    
+
+  tasks:
+
+    ##########################################################################
+    # Pre-Check Section
+    ##########################################################################
+    - name: ===== PRE-CHECKS =====
+      debug:
+        msg: "Starting Pre-Patching Checks on {{ inventory_hostname }}"
+
+    - name: Collect system uptime
+      command: uptime
+      register: uptime_out
+
+    - name: Collect OS version
+      command: cat /etc/os-release
+      register: os_version
+
+    - name: Collect kernel version
+      command: uname -r
+      register: kernel_out
+
+    - name: Collect disk usage
+      command: df -hT
+      register: disk_out
+
+    - name: Collect running services
+      command: systemctl list-units --type=service --state=running
+      register: services_out
+
+    - name: Save pre-check report
+      copy:
+        dest: "{{ precheck_log }}"
+        content: |
+          ===== PRE-PATCH REPORT =====
+          Hostname: {{ inventory_hostname }}
+          Date: {{ ansible_date_time.date }}
+          Time: {{ ansible_date_time.time }}
+          OS Version:
+          {{ os_version.stdout }}
+          Kernel Version:
+          {{ kernel_out.stdout }}
+          Uptime:
+          {{ uptime_out.stdout }}
+          Disk Usage:
+          {{ disk_out.stdout }}
+          Running Services:
+          {{ services_out.stdout }}
+
+    - name: Display completion message
+      debug:
+        msg: "Pre patching checks completed for {{ inventory_hostname }}"
