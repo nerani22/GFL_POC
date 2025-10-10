@@ -1,0 +1,16 @@
+---
+- name: Execute show commands on Cisco switches
+  hosts: cisco_switches
+  gather_facts: no
+  connection: network_cli
+
+  tasks:
+    - name: Show version
+      cisco.ios.ios_command:
+        commands:
+          - show version
+      register: show_output
+
+    - name: Display output
+      debug:
+        var: show_output.stdout_lines
