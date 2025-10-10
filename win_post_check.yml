@@ -1,0 +1,35 @@
+---
+- name: Post-Patching Checks on Windows Servers
+  hosts: windows_servers
+  gather_facts: yes
+  vars:
+    post_report_path: "C:\\Temp\\windows_post_patch_{{ inventory_hostname }}.txt"
+
+  tasks:
+    - name: Post-Patching: Display starting message
+      ansible.builtin.debug:
+        msg: "Starting post-patching checks on {{ inventory_hostname }}"
+
+    - name: List installed updates after patching
+      ansible.windows.win_shell: |
+        Get-HotFix | Select-Object HotFixID, InstalledOn | Convert-Json
+      register: post_updates
+
+    - name: Check uptime after reboot
+      ansible.windows.win_shell: |
+        (Get-CimInstance Win32_OperatingSystem).LastBootUpTime
+      register: uptime_post
+
+    - name: Save post-patching report
+      ansible.windows.win_copy:
+        dest: "{{ post_report_path }}"
+        content: |
+          ===== POST-PATCH REPORT =====
+          Hostname: {{ inventory_hostname }}
+          Current Uptime: {{ uptime_post.stdout }}
+          Installed Updates After:
+          {{ post_updates.stdout }}
+
+    - name: Display post-check completion
+      ansible.builtin.debug:
+        msg: "Post-patching checks completed for {{ inventory_hostname }}. Report: {{ post_report_path }}"
