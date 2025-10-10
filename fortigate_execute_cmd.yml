@@ -1,0 +1,15 @@
+---
+- name: Execute commands on FortiGate firewall
+  hosts: fortigate_firewalls
+  connection: httpapi
+  gather_facts: no
+
+  tasks:
+    - name: Show system interface
+      fortinet.fortios.fortios_monitor_fact:
+        selector: "system_interface"
+      register: result
+
+    - name: Display output
+      debug:
+        var: result
